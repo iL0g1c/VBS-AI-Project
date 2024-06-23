@@ -1,0 +1,18 @@
+digraph {
+	node [fontsize=9 height=0.2 shape=circle width=0.2]
+	Coinage [fillcolor=lightgray shape=box style=filled]
+	Cash [fillcolor=lightgray shape=box style=filled]
+	Night [fillcolor=lightgray shape=box style=filled]
+	"Opponent Coinage" [fillcolor=lightgray shape=box style=filled]
+	"Opponent Cash" [fillcolor=lightgray shape=box style=filled]
+	"Coinage Commit" [fillcolor=lightgray shape=box style=filled]
+	"Cash Commit" [fillcolor=lightgray shape=box style=filled]
+	"Opponent Coinage Commit" [fillcolor=lightgray shape=box style=filled]
+	"Opponent Coin Commit" [fillcolor=lightgray shape=box style=filled]
+	Wins [fillcolor=lightgray shape=box style=filled]
+	Losses [fillcolor=lightgray shape=box style=filled]
+	0 [fillcolor=lightblue style=filled]
+	1 [fillcolor=lightblue style=filled]
+	Cash -> 0 [color=green penwidth=0.1555094294682846 style=solid]
+	"Opponent Coin Commit" -> 1 [color=green penwidth=0.1776688768370137 style=dotted]
+}
