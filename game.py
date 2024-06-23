@@ -8,9 +8,15 @@ class Game:
         self.playerB = playerB
         self.night = 0
         self.winner = None
+
+        self.playerAOverCash = 0
+        self.playerBOverCash = 0
     def start(self, train=False, verbose=False):
         while self.night < 5:
             self.resolveNight(train, verbose)
+        if verbose:
+            print("Player A over cash:", self.playerAOverCash)
+            print("Player B over cash:", self.playerBOverCash)
         if not train:
             if self.playerA.wins > self.playerB.wins:
                 self.winner = "Player A"
@@ -23,6 +29,8 @@ class Game:
                     self.winner = "Player B"
 
     def resolveNight(self, train, verbose):
+        playerAOverCash = 0
+        playerBOverCash = 0
         self.night += 1
         if not train:
             print("Night", self.night)
@@ -90,8 +98,10 @@ class Game:
             bucketA = self.playerA.coinCommit - self.playerB.cashCommit
             bucketB = self.playerB.coinCommit - self.playerA.cashCommit
             if bucketA < 0:
+                self.playerBOverCash += abs(bucketA)
                 bucketA = 0
             if bucketB < 0:
+                self.playerAOverCash += abs(bucketB)
                 bucketB = 0
 
             if bucketA > bucketB:

@@ -5,6 +5,9 @@ import visualize
 import time
 import pickle
 
+coinBalance = 0
+cashBalance = 0
+
 def getGamemode():
     while True:
         print("""
@@ -18,41 +21,73 @@ def getGamemode():
             return int(gamemode)
         else:
             print("Invalid input. Please try again.")
-    
 
-def eval_genomes(genomes, config):
+def getStartingBalance():
+    while True:
+        print("Enter the starting COIN balance for both players: ")
+        startingBalance = input()
+        if startingBalance.isdigit():
+            coinBalance = int(startingBalance)
+            break
+        else:
+            print("Invalid input. Please try again.")
+    while True:
+        print("Enter the starting CASH balance for both players: ")
+        startingBalance = input()
+        if startingBalance.isdigit():
+            cashBalance = int(startingBalance)
+            break
+        else:
+            print("Invalid input. Please try again.")
+    return coinBalance, cashBalance
+
+def calculateFitness(playerA, playerB, playerAOverCash, playerBOverCash):
+    playerAWinBonus = playerA.wins * 5
+    playerATieBonus = (playerA.wins == playerB.wins) * (playerA.totalCommited / 100.0)
+    playerAFitness = playerAWinBonus + playerATieBonus
+    if playerA.totalCommited != 0:
+        playerAFitness *= 1.25 - playerAOverCash / playerA.totalCommited # Penalize for wasting cash
+    playerAFitness += (5 - playerA.wins) * -6 # Penalize for losing nights
+    playerAFitness += playerA.wins / 5.0 # Consistency reward
+    playerAFitness += 30 * ((playerA.startingCoinage + playerA.startingCash - playerA.totalCommited) / (playerA.startingCoinage + playerA.startingCash)) # Manage resources efficiently over the week
+
+    playerBWinBonus = playerB.wins * 5
+    playerBTieBonus = (playerA.wins == playerB.wins) * (playerB.totalCommited / 100.0)
+    playerBFitness = playerBWinBonus + playerBTieBonus
+    if playerB.totalCommited != 0:
+        playerBFitness *= 1.25 - playerBOverCash / playerB.totalCommited
+    playerBFitness += (5 - playerB.wins) * -6
+    playerBFitness += playerB.wins / 5.0
+    playerBFitness += 20 * ((playerB.startingCoinage + playerB.startingCash - playerB.totalCommited) / (playerB.startingCoinage + playerB.startingCash))
+    return playerAFitness, playerBFitness
+
+def eval_genomes(genomes, config, coinBalance, cashBalance):
     for i in range(0, len(genomes), 2):
-        playerA = Player(300, 300, "AI", Genome=genomes[i][1], Config=config)
+        playerA = Player(coinBalance, cashBalance, "AI", Genome=genomes[i][1], Config=config)
         
         if i + 1 < len(genomes):
-            playerB = Player(300, 300, "AI", Genome=genomes[i+1][1], Config=config)
+            playerB = Player(coinBalance, cashBalance, "AI", Genome=genomes[i+1][1], Config=config)
             game = Game(playerA, playerB)
 
             genomes[i][1].fitness = 0.0
             genomes[i+1][1].fitness = 0.0
-            if i > 47:
+            if i > 97:
                 game.start(train=True, verbose=True)
             else:
                 game.start(train=True)
             
-            game.playerA.genome.fitness += game.playerA.wins
-            game.playerA.genome.fitness -= game.playerB.wins
-            game.playerA.genome.fitness -= 1 - game.playerA.totalCommited / (game.playerA.startingCoinage + game.playerA.startingCash)
-
-            game.playerB.genome.fitness += game.playerB.wins
-            game.playerB.genome.fitness -= game.playerA.wins
-            game.playerB.genome.fitness -= 1 - game.playerB.totalCommited / (game.playerB.startingCoinage + game.playerB.startingCash)
+            playerAFitness, playerBFitness = calculateFitness(game.playerA, game.playerB, game.playerAOverCash, game.playerBOverCash)
+            genomes[i][1].fitness = playerAFitness
+            genomes[i+1][1].fitness = playerBFitness
         else:
             # If there is no pair, the genome cannot be evaluated in a game
             # Optionally, assign a default fitness score or handle accordingly
-            print(f"Unpaired genome index: {i}")  # Debug statement for unpaired genome
             genomes[i][1].fitness = 0.0
 
-
-def run(config_file):
+def run(config_file, coinBalance, cashBalance):
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
-                            neat.DefaultSpeciesSet, neat.DefaultStagnation,
-                            config_file)
+                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
+                         config_file)
     p = neat.Population(config)
 
     p.add_reporter(neat.StdOutReporter(True))
@@ -60,7 +95,8 @@ def run(config_file):
     p.add_reporter(stats)
     p.add_reporter(neat.Checkpointer(500))
 
-    winner = p.run(eval_genomes, 500)
+    # Pass the balances to eval_genomes
+    winner = p.run(lambda genomes, config: eval_genomes(genomes, config, coinBalance, cashBalance), 400)
     with open("winner.pkl", "wb") as f:
         pickle.dump(winner, f)
         f.close()
@@ -75,22 +111,27 @@ def main():
     gamemode = getGamemode()
     print("You selected gamemode", gamemode)
     if gamemode == 1:
-        playerA = Player(300, 300, "Human")
-        playerB = Player(300, 300, "Human")
+        coinBalance, cashBalance = getStartingBalance()
+        playerA = Player(coinBalance, cashBalance, "Human")
+        playerB = Player(coinBalance, cashBalance, "Human")
         game = Game(playerA, playerB)
         game.start()
         print("The winner is", game.winner)
     if gamemode == 2:
-        playerA = Player(300, 300, "Human")
-        playerB = Player(300, 300, "AI", train=False, Config=neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+        coinBalance, cashBalance = getStartingBalance()
+        playerA = Player(coinBalance, cashBalance, "Human")
+        playerB = Player(coinBalance, cashBalance, "AI", train=False, Config=neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                             neat.DefaultSpeciesSet, neat.DefaultStagnation,
                             "config-feedforward.txt"))
         game = Game(playerA, playerB)
         game.start()
+        playerAFitness, playerBFitness = calculateFitness(game.playerA, game.playerB, game.playerAOverCash, game.playerBOverCash)
+        print("Player A fitness:", playerAFitness)
+        print("Player B fitness:", playerBFitness)
 
     if gamemode == 3:
-        run("config-feedforward.txt")
-
+        coinBalance, cashBalance = getStartingBalance()
+        run("config-feedforward.txt", coinBalance, cashBalance)
 
 if __name__ == "__main__":
     main()
