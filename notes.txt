@@ -1,0 +1,12 @@
+inputs
+1. cash in bank
+2. coin in bank
+3. night number
+4. opponent cash in bank
+5. opponent coin in bank
+6. total coin commit
+7. total cash commit
+8. opponent total coin commit
+9. opponent total cash commit
+10. personal wins
+11. opponent wins
