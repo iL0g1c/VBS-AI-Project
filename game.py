@@ -8,15 +8,13 @@ class Game:
         self.playerB = playerB
         self.night = 0
         self.winner = None
+        self.logs = ""
 
         self.playerAOverCash = 0
         self.playerBOverCash = 0
-    def start(self, train=False, verbose=False):
+    def start(self, train=False, saveVerbose=False):
         while self.night < 5:
-            self.resolveNight(train, verbose)
-        if verbose:
-            print("Player A over cash:", self.playerAOverCash)
-            print("Player B over cash:", self.playerBOverCash)
+            self.resolveNight(train, saveVerbose)
         if not train:
             if self.playerA.wins > self.playerB.wins:
                 self.winner = "Player A"
@@ -28,7 +26,7 @@ class Game:
                 elif self.playerB.totalCommited > self.playerA.totalCommited:
                     self.winner = "Player B"
 
-    def resolveNight(self, train, verbose):
+    def resolveNight(self, train, saveVerbose):
         playerAOverCash = 0
         playerBOverCash = 0
         self.night += 1
@@ -36,23 +34,23 @@ class Game:
             print("Night", self.night)
             print("===================================")
             print("Player A coinage:", self.playerA.coinage)
-            print("Player B coinage:", self.playerB.coinage)
             print("Player A cash:", self.playerA.cash)
+            print("Player B coinage:", self.playerB.coinage)
             print("Player B cash:", self.playerB.cash)
             print("===================================\n")
             
             print("Player A's turn")
-            self.playerA.resolveDecision(verbose)
+            self.playerA.resolveDecision(saveVerbose)
             print("Player B's turn")
             if self.playerB.playerType == "Human":
-                self.playerB.resolveDecision(verbose)
+                self.playerB.resolveDecision(saveVerbose)
             else:
-                self.playerB.resolveDecision(verbose, night=self.night, opCoin=self.playerA.coinage, opCash=self.playerA.cash, opCoinCommit=self.playerA.coinCommit, opCashCommit=self.playerA.cashCommit, opWins=self.playerA.wins)
+                self.playerB.resolveDecision(saveVerbose, night=self.night, opCoin=self.playerA.coinage, opCash=self.playerA.cash, opCoinCommit=self.playerA.coinCommit, opCashCommit=self.playerA.cashCommit, opWins=self.playerA.wins)
 
             print("===================================")
             print("Player A commit coins:", self.playerA.coinCommit)
-            print("Player B commit coins:", self.playerB.coinCommit)
             print("Player A commit cash:", self.playerA.cashCommit)
+            print("Player B commit coins:", self.playerB.coinCommit)
             print("Player B commit cash:", self.playerB.cashCommit)
             print("===================================\n")
 
@@ -76,25 +74,24 @@ class Game:
             print("Player A wins:", self.playerA.wins)
             print("Player B wins:", self.playerB.wins)
         else:
-            if verbose:
-                print("Night", self.night)
-                print("===================================")
-                print("Player A coinage:", self.playerA.coinage)
-                print("Player B coinage:", self.playerB.coinage)
-                print("Player A cash:", self.playerA.cash)
-                print("Player B cash:", self.playerB.cash)
-                print("===================================\n")
-            self.playerA.resolveDecision(verbose, night=self.night, opCoin=self.playerB.coinage, opCash=self.playerB.cash, opCoinCommit=self.playerB.coinCommit, opCashCommit=self.playerB.cashCommit, opWins=self.playerB.wins)
-            self.playerB.resolveDecision(verbose, night=self.night, opCoin=self.playerA.coinage, opCash=self.playerA.cash, opCoinCommit=self.playerA.coinCommit, opCashCommit=self.playerA.cashCommit, opWins=self.playerA.wins)
+            if saveVerbose:
+                self.logs += f"Night: {self.night}\n"
+                self.logs += f"===================================\n"
+                self.logs += f"Player A coinage: {self.playerA.coinage}\n"
+                self.logs += f"Player A cash: {self.playerA.cash}\n"
+                self.logs += f"Player B coinage: {self.playerB.coinage}\n"
+                self.logs += f"Player B cash: {self.playerB.cash}\n"
+            self.playerA.resolveDecision(saveVerbose, night=self.night, opCoin=self.playerB.coinage, opCash=self.playerB.cash, opCoinCommit=self.playerB.coinCommit, opCashCommit=self.playerB.cashCommit, opWins=self.playerB.wins)
+            self.playerB.resolveDecision(saveVerbose, night=self.night, opCoin=self.playerA.coinage, opCash=self.playerA.cash, opCoinCommit=self.playerA.coinCommit, opCashCommit=self.playerA.cashCommit, opWins=self.playerA.wins)
 
 
-            if verbose:
-                print("===================================")
-                print("Player A commit coins:", self.playerA.coinCommit)
-                print("Player B commit coins:", self.playerB.coinCommit)
-                print("Player A commit cash:", self.playerA.cashCommit)
-                print("Player B commit cash:", self.playerB.cashCommit)
-                print("===================================\n")
+            if saveVerbose:
+                self.logs += f"===================================\n"
+                self.logs += f"Player A commit coins: {self.playerA.coinCommit}\n"
+                self.logs += f"Player A commit cash: {self.playerA.cashCommit}\n"
+                self.logs += f"Player B commit coins: {self.playerB.coinCommit}\n"
+                self.logs += f"Player B commit cash: {self.playerB.cashCommit}\n"
+                self.logs += f"===================================\n"
             bucketA = self.playerA.coinCommit - self.playerB.cashCommit
             bucketB = self.playerB.coinCommit - self.playerA.cashCommit
             if bucketA < 0:
@@ -108,6 +105,6 @@ class Game:
                 self.playerA.wins += 1
             elif bucketB > bucketA:
                 self.playerB.wins += 1
-            if verbose:
-                print("Player A wins:", self.playerA.wins)
-                print("Player B wins:", self.playerB.wins)
+            if saveVerbose:
+                self.logs += f"Player A wins: {self.playerA.wins}\n"
+                self.logs += f"Player B wins: {self.playerB.wins}\n"

@@ -42,26 +42,55 @@ def getStartingBalance():
     return coinBalance, cashBalance
 
 def calculateFitness(playerA, playerB, playerAOverCash, playerBOverCash):
+    fitnessLogs = "Fitness Logs\n"
     playerAWinBonus = playerA.wins * 5
     playerATieBonus = (playerA.wins == playerB.wins) * (playerA.totalCommited / 100.0)
     playerAFitness = playerAWinBonus + playerATieBonus
+    fitnessLogs += f"Player A win bonus: {playerAWinBonus}\n"
+    fitnessLogs += f"Player A tie bonus: {playerATieBonus}\n"
     if playerA.totalCommited != 0:
-        playerAFitness *= 1.25 - playerAOverCash / playerA.totalCommited # Penalize for wasting cash
-    playerAFitness += (5 - playerA.wins) * -6 # Penalize for losing nights
-    playerAFitness += playerA.wins / 5.0 # Consistency reward
-    playerAFitness += 30 * ((playerA.startingCoinage + playerA.startingCash - playerA.totalCommited) / (playerA.startingCoinage + playerA.startingCash)) # Manage resources efficiently over the week
+        penalty = 1 - playerAOverCash / playerA.totalCommited
+    else:
+        penalty = 1
+    playerAFitness *= penalty
+    fitnessLogs += f"Player A over cash penalty: {penalty}\n"
+    penalty = (5 - playerA.wins) * -6 # Penalize for losing nights
+    playerAFitness += penalty
+    fitnessLogs += f"Player A loss penalty: {penalty}\n"
+    bonus = playerA.wins / 5.0 # Consistency reward
+    playerAFitness += bonus
+    fitnessLogs += f"Player A consistency bonus: {bonus}\n"
+    bonus = 30 * (playerA.totalCommited / (playerA.startingCoinage + playerA.startingCash)) # Manage resources efficiently over the week
+    playerAFitness += bonus
+    fitnessLogs += f"Player A resource efficiency: {bonus}\n"
+    fitnessLogs += f"Player A fitness: {playerAFitness}\n"
 
     playerBWinBonus = playerB.wins * 5
-    playerBTieBonus = (playerA.wins == playerB.wins) * (playerB.totalCommited / 100.0)
+    playerBTieBonus = (playerB.wins == playerA.wins) * (playerB.totalCommited / 100.0)
     playerBFitness = playerBWinBonus + playerBTieBonus
+    fitnessLogs += f"Player B win bonus: {playerBWinBonus}\n"
+    fitnessLogs += f"Player B tie bonus: {playerBTieBonus}\n"
     if playerB.totalCommited != 0:
-        playerBFitness *= 1.25 - playerBOverCash / playerB.totalCommited
-    playerBFitness += (5 - playerB.wins) * -6
-    playerBFitness += playerB.wins / 5.0
-    playerBFitness += 20 * ((playerB.startingCoinage + playerB.startingCash - playerB.totalCommited) / (playerB.startingCoinage + playerB.startingCash))
-    return playerAFitness, playerBFitness
+        penalty = 1 - playerBOverCash / playerB.totalCommited
+    else:
+        penalty = 1
+    playerBFitness *= penalty
+    fitnessLogs += f"Player B over cash penalty: {penalty}\n"
+    penalty = (5 - playerB.wins) * -6
+    playerBFitness += penalty
+    fitnessLogs += f"Player B loss penalty: {penalty}\n"
+    bonus = playerB.wins / 5.0
+    playerBFitness += bonus
+    fitnessLogs += f"Player B consistency bonus: {bonus}\n"
+    bonus = 30 * (playerB.totalCommited / (playerB.startingCoinage + playerB.startingCash))
+    playerBFitness += bonus
+    fitnessLogs += f"Player B resource efficiency: {bonus}\n"
+    fitnessLogs += f"Player B fitness: {playerBFitness}\n"
+    return playerAFitness, playerBFitness, fitnessLogs
 
 def eval_genomes(genomes, config, coinBalance, cashBalance):
+    highestFitness = 0
+    bestLog = ""
     for i in range(0, len(genomes), 2):
         playerA = Player(coinBalance, cashBalance, "AI", Genome=genomes[i][1], Config=config)
         
@@ -71,20 +100,28 @@ def eval_genomes(genomes, config, coinBalance, cashBalance):
 
             genomes[i][1].fitness = 0.0
             genomes[i+1][1].fitness = 0.0
-            if i > 97:
-                game.start(train=True, verbose=True)
-            else:
-                game.start(train=True)
+            game.logs = "=======================\n"
+            game.start(train=True, saveVerbose=True)
             
-            playerAFitness, playerBFitness = calculateFitness(game.playerA, game.playerB, game.playerAOverCash, game.playerBOverCash)
+            playerAFitness, playerBFitness, fitnessLogs = calculateFitness(game.playerA, game.playerB, game.playerAOverCash, game.playerBOverCash)
+            game.logs += fitnessLogs
             genomes[i][1].fitness = playerAFitness
             genomes[i+1][1].fitness = playerBFitness
+            if (playerAFitness + playerBFitness) / 2 > highestFitness:
+                highestFitness = (playerAFitness + playerBFitness) / 2
+                bestLog += game.logs
         else:
             # If there is no pair, the genome cannot be evaluated in a game
             # Optionally, assign a default fitness score or handle accordingly
             genomes[i][1].fitness = 0.0
+    with open("bestLog.txt", "a") as f:
+        f.write(bestLog)
+        f.close()
 
 def run(config_file, coinBalance, cashBalance):
+    with open("bestLog.txt", "w") as f:
+        f.write("")
+        f.close()
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_file)
@@ -96,7 +133,7 @@ def run(config_file, coinBalance, cashBalance):
     p.add_reporter(neat.Checkpointer(500))
 
     # Pass the balances to eval_genomes
-    winner = p.run(lambda genomes, config: eval_genomes(genomes, config, coinBalance, cashBalance), 400)
+    winner = p.run(lambda genomes, config: eval_genomes(genomes, config, coinBalance, cashBalance), 500)
     with open("winner.pkl", "wb") as f:
         pickle.dump(winner, f)
         f.close()
@@ -125,9 +162,8 @@ def main():
                             "config-feedforward.txt"))
         game = Game(playerA, playerB)
         game.start()
-        playerAFitness, playerBFitness = calculateFitness(game.playerA, game.playerB, game.playerAOverCash, game.playerBOverCash)
-        print("Player A fitness:", playerAFitness)
-        print("Player B fitness:", playerBFitness)
+        playerAFitness, playerBFitness, fitnessLogs = calculateFitness(game.playerA, game.playerB, game.playerAOverCash, game.playerBOverCash)
+        print(fitnessLogs)
 
     if gamemode == 3:
         coinBalance, cashBalance = getStartingBalance()
