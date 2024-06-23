@@ -36,7 +36,10 @@ class Game:
             print("Player A's turn")
             self.playerA.resolveDecision(verbose)
             print("Player B's turn")
-            self.playerB.resolveDecision(verbose)
+            if self.playerB.playerType == "Human":
+                self.playerB.resolveDecision(verbose)
+            else:
+                self.playerB.resolveDecision(verbose, night=self.night, opCoin=self.playerA.coinage, opCash=self.playerA.cash, opCoinCommit=self.playerA.coinCommit, opCashCommit=self.playerA.cashCommit, opWins=self.playerA.wins)
 
             print("===================================")
             print("Player A commit coins:", self.playerA.coinCommit)
@@ -47,6 +50,10 @@ class Game:
 
             bucketA = self.playerA.coinCommit - self.playerB.cashCommit
             bucketB = self.playerB.coinCommit - self.playerA.cashCommit
+            if bucketA < 0:
+                bucketA = 0
+            if bucketB < 0:
+                bucketB = 0
 
             print("===================================")
             if bucketA > bucketB:
@@ -82,6 +89,10 @@ class Game:
                 print("===================================\n")
             bucketA = self.playerA.coinCommit - self.playerB.cashCommit
             bucketB = self.playerB.coinCommit - self.playerA.cashCommit
+            if bucketA < 0:
+                bucketA = 0
+            if bucketB < 0:
+                bucketB = 0
 
             if bucketA > bucketB:
                 self.playerA.wins += 1

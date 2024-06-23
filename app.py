@@ -3,6 +3,7 @@ from player import Player
 import neat
 import visualize
 import time
+import pickle
 
 def getGamemode():
     while True:
@@ -20,7 +21,6 @@ def getGamemode():
     
 
 def eval_genomes(genomes, config):
-    print(f"Number of genomes: {len(genomes)}")  # Debug statement to print the number of genomes
     for i in range(0, len(genomes), 2):
         playerA = Player(300, 300, "AI", Genome=genomes[i][1], Config=config)
         
@@ -30,16 +30,18 @@ def eval_genomes(genomes, config):
 
             genomes[i][1].fitness = 0.0
             genomes[i+1][1].fitness = 0.0
-            print(i)
-            if i > 46:
+            if i > 47:
                 game.start(train=True, verbose=True)
             else:
                 game.start(train=True)
             
             game.playerA.genome.fitness += game.playerA.wins
             game.playerA.genome.fitness -= game.playerB.wins
+            game.playerA.genome.fitness -= 1 - game.playerA.totalCommited / (game.playerA.startingCoinage + game.playerA.startingCash)
+
             game.playerB.genome.fitness += game.playerB.wins
             game.playerB.genome.fitness -= game.playerA.wins
+            game.playerB.genome.fitness -= 1 - game.playerB.totalCommited / (game.playerB.startingCoinage + game.playerB.startingCash)
         else:
             # If there is no pair, the genome cannot be evaluated in a game
             # Optionally, assign a default fitness score or handle accordingly
@@ -56,14 +58,16 @@ def run(config_file):
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
-    p.add_reporter(neat.Checkpointer(300))
+    p.add_reporter(neat.Checkpointer(500))
 
-    winner = p.run(eval_genomes, 300)
+    winner = p.run(eval_genomes, 500)
+    with open("winner.pkl", "wb") as f:
+        pickle.dump(winner, f)
+        f.close()
 
     print('\nBest genome:\n{!s}'.format(winner))
     node_names = {-1: 'Coinage', -2: 'Cash', -3: 'Night', -4: 'Opponent Coinage', -5: 'Opponent Cash', -6: 'Coinage Commit', -7: 'Cash Commit', -8: 'Opponent Coinage Commit', -9: 'Opponent Coin Commit', -10: 'Wins', -11: 'Losses'}
     visualize.draw_net(config, winner, True, node_names=node_names)
-    visualize.draw_net(config, winner, True, node_names=node_names, prune_unused=True)
     visualize.plot_stats(stats, ylog=False, view=True)
     visualize.plot_species(stats, view=True)
 
@@ -77,7 +81,13 @@ def main():
         game.start()
         print("The winner is", game.winner)
     if gamemode == 2:
-        pass
+        playerA = Player(300, 300, "Human")
+        playerB = Player(300, 300, "AI", train=False, Config=neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                            neat.DefaultSpeciesSet, neat.DefaultStagnation,
+                            "config-feedforward.txt"))
+        game = Game(playerA, playerB)
+        game.start()
+
     if gamemode == 3:
         run("config-feedforward.txt")
 
