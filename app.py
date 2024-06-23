@@ -42,6 +42,8 @@ def getStartingBalance():
     return coinBalance, cashBalance
 
 def calculateFitness(playerA, playerB, playerAOverCash, playerBOverCash):
+    # FITNESS MODIFICAATIONS
+    # NO NEGATIVE FITNESS VALUES
     fitnessLogs = "Fitness Logs\n"
     playerAWinBonus = playerA.wins * 5
     playerATieBonus = (playerA.wins == playerB.wins) * (playerA.totalCommited / 100.0)
@@ -49,10 +51,10 @@ def calculateFitness(playerA, playerB, playerAOverCash, playerBOverCash):
     fitnessLogs += f"Player A win bonus: {playerAWinBonus}\n"
     fitnessLogs += f"Player A tie bonus: {playerATieBonus}\n"
     if playerA.totalCommited != 0:
-        penalty = 1 - playerAOverCash / playerA.totalCommited
+        penalty = (1 - playerAOverCash / playerA.totalCommited) * 15
     else:
         penalty = 1
-    playerAFitness *= penalty
+    playerAFitness += penalty
     fitnessLogs += f"Player A over cash penalty: {penalty}\n"
     penalty = (5 - playerA.wins) * -6 # Penalize for losing nights
     playerAFitness += penalty
@@ -71,10 +73,10 @@ def calculateFitness(playerA, playerB, playerAOverCash, playerBOverCash):
     fitnessLogs += f"Player B win bonus: {playerBWinBonus}\n"
     fitnessLogs += f"Player B tie bonus: {playerBTieBonus}\n"
     if playerB.totalCommited != 0:
-        penalty = 1 - playerBOverCash / playerB.totalCommited
+        penalty = (1 - playerBOverCash / playerB.totalCommited) * 15
     else:
         penalty = 1
-    playerBFitness *= penalty
+    playerBFitness += penalty
     fitnessLogs += f"Player B over cash penalty: {penalty}\n"
     penalty = (5 - playerB.wins) * -6
     playerBFitness += penalty
