@@ -41,54 +41,35 @@ def getStartingBalance():
             print("Invalid input. Please try again.")
     return coinBalance, cashBalance
 
-def calculateFitness(playerA, playerB, playerAOverCash, playerBOverCash):
+def calculateFitness(player, opponentPlayer, playerOverCash):
     # FITNESS MODIFICAATIONS
     # NO NEGATIVE FITNESS VALUES
+    # Wins
+    # losses
+    # efficiency
+    # cash burn
+    playerAFitness = 0
     fitnessLogs = "Fitness Logs\n"
-    playerAWinBonus = playerA.wins * 5
-    playerATieBonus = (playerA.wins == playerB.wins) * (playerA.totalCommited / 100.0)
-    playerAFitness = playerAWinBonus + playerATieBonus
-    fitnessLogs += f"Player A win bonus: {playerAWinBonus}\n"
-    fitnessLogs += f"Player A tie bonus: {playerATieBonus}\n"
-    if playerA.totalCommited != 0:
-        penalty = (1 - playerAOverCash / playerA.totalCommited) * 15
+    if player.wins > opponentPlayer.wins:
+        playerAWinBonus = (player.wins / 5) * 50
     else:
-        penalty = 1
-    playerAFitness += penalty
-    fitnessLogs += f"Player A over cash penalty: {penalty}\n"
-    penalty = (5 - playerA.wins) * -6 # Penalize for losing nights
-    playerAFitness += penalty
-    fitnessLogs += f"Player A loss penalty: {penalty}\n"
-    bonus = playerA.wins / 5.0 # Consistency reward
-    playerAFitness += bonus
-    fitnessLogs += f"Player A consistency bonus: {bonus}\n"
-    bonus = 30 * (playerA.totalCommited / (playerA.startingCoinage + playerA.startingCash)) # Manage resources efficiently over the week
-    playerAFitness += bonus
-    fitnessLogs += f"Player A resource efficiency: {bonus}\n"
-    fitnessLogs += f"Player A fitness: {playerAFitness}\n"
-
-    playerBWinBonus = playerB.wins * 5
-    playerBTieBonus = (playerB.wins == playerA.wins) * (playerB.totalCommited / 100.0)
-    playerBFitness = playerBWinBonus + playerBTieBonus
-    fitnessLogs += f"Player B win bonus: {playerBWinBonus}\n"
-    fitnessLogs += f"Player B tie bonus: {playerBTieBonus}\n"
-    if playerB.totalCommited != 0:
-        penalty = (1 - playerBOverCash / playerB.totalCommited) * 15
+        playerAWinBonus = (player.wins / 5) * 25
+    playerAFitness += playerAWinBonus
+    fitnessLogs += f"Win bonus: {playerAWinBonus}\n"
+    if player.wins >  opponentPlayer.wins:
+        playerAOpLossBonus = ((5 - opponentPlayer.wins) / 5) * 50
     else:
-        penalty = 1
-    playerBFitness += penalty
-    fitnessLogs += f"Player B over cash penalty: {penalty}\n"
-    penalty = (5 - playerB.wins) * -6
-    playerBFitness += penalty
-    fitnessLogs += f"Player B loss penalty: {penalty}\n"
-    bonus = playerB.wins / 5.0
-    playerBFitness += bonus
-    fitnessLogs += f"Player B consistency bonus: {bonus}\n"
-    bonus = 30 * (playerB.totalCommited / (playerB.startingCoinage + playerB.startingCash))
-    playerBFitness += bonus
-    fitnessLogs += f"Player B resource efficiency: {bonus}\n"
-    fitnessLogs += f"Player B fitness: {playerBFitness}\n"
-    return playerAFitness, playerBFitness, fitnessLogs
+        playerAOpLossBonus = ((5 - opponentPlayer.wins) / 5) * 25
+    playerAFitness += playerAOpLossBonus
+    fitnessLogs += f"Opponent loss bonus: {playerAOpLossBonus}\n"
+    playerAEfficiencyBonus = (player.totalCommited / (player.startingCoinage + player.startingCash)) * 20
+    playerAFitness += playerAEfficiencyBonus
+    fitnessLogs += f"Efficiency bonus: {playerAEfficiencyBonus}\n"
+    playerACashBurnBonus = (1 - playerOverCash / player.startingCash) * 20
+    playerAFitness += playerACashBurnBonus
+    fitnessLogs += f"Cash burn bonus: {playerACashBurnBonus}\n"
+    fitnessLogs += f"Total fitness: {playerAFitness}\n"
+    return playerAFitness, fitnessLogs
 
 def eval_genomes(genomes, config, coinBalance, cashBalance):
     highestFitness = 0
@@ -105,8 +86,9 @@ def eval_genomes(genomes, config, coinBalance, cashBalance):
             game.logs = "=======================\n"
             game.start(train=True, saveVerbose=True)
             
-            playerAFitness, playerBFitness, fitnessLogs = calculateFitness(game.playerA, game.playerB, game.playerAOverCash, game.playerBOverCash)
-            game.logs += fitnessLogs
+            playerAFitness, playerAFitnessLog = calculateFitness(game.playerA, game.playerB, game.playerAOverCash)
+            playerBFitness, playerBFitnessLog = calculateFitness(game.playerB, game.playerA, game.playerBOverCash)
+            game.logs += "PLAYER A:\n" + playerAFitnessLog + "PLAYER B:\n" + playerBFitnessLog
             genomes[i][1].fitness = playerAFitness
             genomes[i+1][1].fitness = playerBFitness
             if (playerAFitness + playerBFitness) / 2 > highestFitness:
@@ -135,7 +117,7 @@ def run(config_file, coinBalance, cashBalance):
     p.add_reporter(neat.Checkpointer(500))
 
     # Pass the balances to eval_genomes
-    winner = p.run(lambda genomes, config: eval_genomes(genomes, config, coinBalance, cashBalance), 500)
+    winner = p.run(lambda genomes, config: eval_genomes(genomes, config, coinBalance, cashBalance), 1000)
     with open("winner.pkl", "wb") as f:
         pickle.dump(winner, f)
         f.close()
