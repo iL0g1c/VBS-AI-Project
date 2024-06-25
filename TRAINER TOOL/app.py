@@ -146,8 +146,11 @@ def main():
                             "config-feedforward.txt"))
         game = Game(playerA, playerB)
         game.start()
-        playerAFitness, playerBFitness, fitnessLogs = calculateFitness(game.playerA, game.playerB, game.playerAOverCash, game.playerBOverCash)
-        print(fitnessLogs)
+        playerAFitness, playerAFitnessLog = calculateFitness(game.playerA, game.playerB, game.playerAOverCash)
+        playerBFitness, playerBFitnessLog = calculateFitness(game.playerB, game.playerA, game.playerBOverCash)
+        game.logs += "PLAYER A:\n" + playerAFitnessLog + "PLAYER B:\n" + playerBFitnessLog
+        print(game.logs)
+
 
     if gamemode == 3:
         coinBalance, cashBalance = getStartingBalance()
